@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""
+Superset initialization script using REST API.
+Creates database connection, datasets, charts, and dashboard.
+
+Run after Superset is up:
+  docker exec superset python /app/pythonpath/init_superset.py
+"""
+
+import json
+import logging
+import time
+import requests
+from urllib.parse import urljoin
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+SUPERSET_URL = "http://localhost:8088"
+USERNAME = "admin"
+PASSWORD = "admin"
+
+
+class SupersetAPI:
+    def __init__(self, base_url, username, password):
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.access_token = None
+        self.csrf_token = None
+        self._login(username, password)
+
+    def _login(self, username, password):
+        """Login and get access token."""
+        # Get access token
+        login_url = urljoin(self.base_url, "/api/v1/security/login")
+        response = self.session.post(login_url, json={
+            "username": username,
+            "password": password,
+            "provider": "db",
+            "refresh": True
+        })
+
+        if response.status_code == 200:
+            self.access_token = response.json().get("access_token")
+            self.session.headers.update({
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json"
+            })
+            logger.info("Successfully logged in to Superset")
+        else:
+            raise Exception(f"Login failed: {response.text}")
+
+        # Get CSRF token
+        csrf_url = urljoin(self.base_url, "/api/v1/security/csrf_token/")
+        response = self.session.get(csrf_url)
+        if response.status_code == 200:
+            self.csrf_token = response.json().get("result")
+            self.session.headers.update({"X-CSRFToken": self.csrf_token})
+            logger.info("Got CSRF token")
+
+    def _request(self, method, endpoint, **kwargs):
+        """Make API request."""
+        url = urljoin(self.base_url, endpoint)
+        response = self.session.request(method, url, **kwargs)
+        return response
+
+    def create_database(self, name, sqlalchemy_uri):
+        """Create database connection."""
+        # Check if exists
+        response = self._request("GET", "/api/v1/database/")
+        if response.status_code == 200:
+            for db in response.json().get("result", []):
+                if db.get("database_name") == name:
+                    logger.info(f"Database '{name}' already exists with id={db['id']}")
+                    return db["id"]
+
+        # Create new
+        data = {
+            "database_name": name,
+            "sqlalchemy_uri": sqlalchemy_uri,
+            "expose_in_sqllab": True,
+            "allow_ctas": False,
+            "allow_cvas": False,
+            "allow_dml": False,
+            "allow_run_async": True,
+            "extra": json.dumps({
+                "engine_params": {
+                    "connect_args": {"connect_timeout": 10}
+                }
+            })
+        }
+
+        response = self._request("POST", "/api/v1/database/", json=data)
+        if response.status_code in [200, 201]:
+            db_id = response.json().get("id")
+            logger.info(f"Created database '{name}' with id={db_id}")
+            return db_id
+        else:
+            logger.error(f"Failed to create database: {response.text}")
+            return None
+
+    def create_dataset(self, database_id, table_name, schema="clickstream"):
+        """Create dataset from table."""
+        # Check if exists
+        response = self._request("GET", "/api/v1/dataset/")
+        if response.status_code == 200:
+            for ds in response.json().get("result", []):
+                if ds.get("table_name") == table_name:
+                    logger.info(f"Dataset '{table_name}' already exists with id={ds['id']}")
+                    return ds["id"]
+
+        # Create new
+        data = {
+            "database": database_id,
+            "table_name": table_name,
+            "schema": schema
+        }
+
+        response = self._request("POST", "/api/v1/dataset/", json=data)
+        if response.status_code in [200, 201]:
+            ds_id = response.json().get("id")
+            logger.info(f"Created dataset '{table_name}' with id={ds_id}")
+            return ds_id
+        else:
+            logger.error(f"Failed to create dataset '{table_name}': {response.text}")
+            return None
+
+    def create_chart(self, name, viz_type, datasource_id, params, datasource_type="table"):
+        """Create chart."""
+        # Check if exists
+        response = self._request("GET", "/api/v1/chart/")
+        if response.status_code == 200:
+            for chart in response.json().get("result", []):
+                if chart.get("slice_name") == name:
+                    logger.info(f"Chart '{name}' already exists with id={chart['id']}")
+                    return chart["id"]
+
+        # Create new
+        data = {
+            "slice_name": name,
+            "viz_type": viz_type,
+            "datasource_id": datasource_id,
+            "datasource_type": datasource_type,
+            "params": json.dumps(params)
+        }
+
+        response = self._request("POST", "/api/v1/chart/", json=data)
+        if response.status_code in [200, 201]:
+            chart_id = response.json().get("id")
+            logger.info(f"Created chart '{name}' with id={chart_id}")
+            return chart_id
+        else:
+            logger.error(f"Failed to create chart '{name}': {response.text}")
+            return None
+
+    def delete_dashboard(self, slug):
+        """Delete dashboard by slug."""
+        response = self._request("GET", "/api/v1/dashboard/")
+        if response.status_code == 200:
+            for dash in response.json().get("result", []):
+                if dash.get("slug") == slug:
+                    self._request("DELETE", f"/api/v1/dashboard/{dash['id']}")
+                    logger.info(f"Deleted dashboard with slug '{slug}'")
+                    return True
+        return False
+
+    def create_dashboard(self, title, slug, chart_ids, force_recreate=False):
+        """Create dashboard with charts using simple approach."""
+        # Check if exists
+        response = self._request("GET", "/api/v1/dashboard/")
+        if response.status_code == 200:
+            for dash in response.json().get("result", []):
+                if dash.get("slug") == slug:
+                    if force_recreate:
+                        self.delete_dashboard(slug)
+                        break
+                    else:
+                        logger.info(f"Dashboard '{title}' already exists with id={dash['id']}")
+                        return dash["id"]
+
+        # Create simple dashboard first (without complex layout)
+        data = {
+            "dashboard_title": title,
+            "slug": slug,
+            "published": True
+        }
+
+        response = self._request("POST", "/api/v1/dashboard/", json=data)
+        if response.status_code not in [200, 201]:
+            logger.error(f"Failed to create dashboard: {response.text}")
+            return None
+
+        dash_id = response.json().get("id")
+        logger.info(f"Created dashboard '{title}' with id={dash_id}")
+
+        # Now add charts to dashboard via embedded charts endpoint
+        # Get chart details and build slices list
+        slices = []
+        for chart_id in chart_ids:
+            resp = self._request("GET", f"/api/v1/chart/{chart_id}")
+            if resp.status_code == 200:
+                chart_data = resp.json().get("result", {})
+                slices.append(chart_id)
+
+        if slices:
+            # Update dashboard with charts
+            # Use the slices relationship to add charts
+            update_data = {
+                "json_metadata": json.dumps({
+                    "timed_refresh_immune_slices": [],
+                    "expanded_slices": {},
+                    "refresh_frequency": 0,
+                    "default_filters": "{}",
+                    "color_scheme": "supersetColors"
+                })
+            }
+
+            resp = self._request("PUT", f"/api/v1/dashboard/{dash_id}", json=update_data)
+            if resp.status_code in [200, 201]:
+                logger.info(f"Updated dashboard metadata")
+
+        logger.info(f"Dashboard created. Add charts manually via UI: Edit Dashboard -> + button")
+        logger.info(f"Or view individual charts at: http://localhost:8088/superset/explore/?slice_id=<chart_id>")
+
+        return dash_id
+
+
+def main():
+    """Main initialization function."""
+    logger.info("=" * 60)
+    logger.info("Starting Superset initialization...")
+    logger.info("=" * 60)
+
+    api = SupersetAPI(SUPERSET_URL, USERNAME, PASSWORD)
+
+    # 1. Create ClickHouse database connection
+    logger.info("\n>>> Creating ClickHouse database connection...")
+    db_id = api.create_database(
+        name="ClickHouse Analytics",
+        sqlalchemy_uri="clickhousedb://clickstream:clickstream123@clickhouse-1:8123/clickstream"
+    )
+
+    if not db_id:
+        logger.error("Failed to create database. Exiting.")
+        return
+
+    # Wait for database to be ready
+    time.sleep(2)
+
+    # 2. Create datasets
+    logger.info("\n>>> Creating datasets...")
+    events_processed_id = api.create_dataset(db_id, "events_processed")
+    events_raw_id = api.create_dataset(db_id, "events_raw")
+
+    if not events_processed_id:
+        logger.error("Failed to create events_processed dataset. Exiting.")
+        return
+
+    # Wait for datasets to be ready
+    time.sleep(2)
+
+    # 3. Create charts
+    logger.info("\n>>> Creating charts...")
+    chart_ids = []
+
+    # Chart 1: Events by Type (Pie)
+    chart_id = api.create_chart(
+        name="Events by Type",
+        viz_type="pie",
+        datasource_id=events_processed_id,
+        params={
+            "metric": "count",
+            "groupby": ["event_type"],
+            "row_limit": 100,
+            "color_scheme": "supersetColors",
+            "show_legend": True,
+            "show_labels": True,
+            "label_type": "key_value",
+            "number_format": "SMART_NUMBER"
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # Chart 2: Events by Device Type (Pie)
+    chart_id = api.create_chart(
+        name="Events by Device",
+        viz_type="pie",
+        datasource_id=events_processed_id,
+        params={
+            "metric": "count",
+            "groupby": ["device_type"],
+            "row_limit": 100,
+            "color_scheme": "supersetColors",
+            "show_legend": True
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # Chart 3: Events by Browser (Bar)
+    chart_id = api.create_chart(
+        name="Events by Browser",
+        viz_type="dist_bar",
+        datasource_id=events_processed_id,
+        params={
+            "metrics": ["count"],
+            "groupby": ["browser"],
+            "row_limit": 10,
+            "color_scheme": "supersetColors",
+            "show_legend": False,
+            "y_axis_format": "SMART_NUMBER",
+            "order_desc": True
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # Chart 4: Events by OS (Bar)
+    chart_id = api.create_chart(
+        name="Events by OS",
+        viz_type="dist_bar",
+        datasource_id=events_processed_id,
+        params={
+            "metrics": ["count"],
+            "groupby": ["os"],
+            "row_limit": 10,
+            "color_scheme": "supersetColors",
+            "show_legend": False,
+            "order_desc": True
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # Chart 5: Top Pages (Table)
+    chart_id = api.create_chart(
+        name="Top Pages",
+        viz_type="table",
+        datasource_id=events_processed_id,
+        params={
+            "metrics": ["count"],
+            "groupby": ["url_path"],
+            "row_limit": 20,
+            "order_desc": True,
+            "table_timestamp_format": "smart_date",
+            "page_length": 20
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # Chart 6: Events by Country (Pie)
+    chart_id = api.create_chart(
+        name="Events by Country",
+        viz_type="pie",
+        datasource_id=events_processed_id,
+        params={
+            "metric": "count",
+            "groupby": ["country"],
+            "row_limit": 20,
+            "color_scheme": "supersetColors",
+            "show_legend": True
+        }
+    )
+    if chart_id:
+        chart_ids.append(chart_id)
+
+    # 4. Create dashboard (force recreate to fix layout)
+    if chart_ids:
+        logger.info("\n>>> Creating dashboard...")
+        api.create_dashboard(
+            title="Clickstream Analytics",
+            slug="clickstream-analytics",
+            chart_ids=chart_ids,
+            force_recreate=True
+        )
+
+    logger.info("\n" + "=" * 60)
+    logger.info("Superset initialization complete!")
+    logger.info("=" * 60)
+    logger.info(f"\nAccess Superset at: {SUPERSET_URL}")
+    logger.info("Login: admin / admin")
+    logger.info("\nCreated:")
+    logger.info(f"  - Database: ClickHouse Analytics")
+    logger.info(f"  - Datasets: events_processed, events_raw")
+    logger.info(f"  - Charts: {len(chart_ids)} charts")
+    logger.info(f"  - Dashboard: Clickstream Analytics")
+
+
+if __name__ == "__main__":
+    main()

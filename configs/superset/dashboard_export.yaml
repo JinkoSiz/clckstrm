@@ -1,0 +1,10 @@
+version: 1.0.0
+type: Dashboard
+timestamp: '2026-01-04T00:00:00.000Z'
+metadata:
+  type: Dashboard
+  timestamp: '2026-01-04T00:00:00.000Z'
+  native_filter_configuration: []
+databases:
+  - database_name: ClickHouse Analytics
+    sqlalchemy_uri: clickhousedb://clickstream:clickstream123@clickhouse-1:8123/clickstream
