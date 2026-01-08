@@ -101,9 +101,9 @@ class EventProcessor:
         # Parse URL
         url_path = self._extract_url_path(event.url)
 
-        # Get country from IP
+        # Get country - prefer from event, fallback to IP lookup
         ip = event.ip or client_ip or ""
-        country = self._get_country_from_ip(ip)
+        country = event.country or self._get_country_from_ip(ip)
 
         # Extract payload data
         payload = event.payload or {}
@@ -122,6 +122,7 @@ class EventProcessor:
             "device_type": event.device_type.value if event.device_type else ua_info["device_type"],
             "user_agent": event.user_agent or "",
             "payload": payload_dict,
+            "country": country or "",
         }
 
         # Processed event dict - ensure no None values for ClickHouse
