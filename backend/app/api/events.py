@@ -4,7 +4,7 @@ Events API endpoints.
 Handles event ingestion and retrieval.
 """
 
-from datetime import datetime
+from datetime import date
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
@@ -77,8 +77,8 @@ async def get_events(
     session_id: Optional[str] = Query(None, description="Filter by session ID"),
     type: Optional[EventType] = Query(None, description="Filter by event type"),
     url: Optional[str] = Query(None, description="Filter by URL (partial match)"),
-    date_from: Optional[datetime] = Query(None, alias="from", description="Start date"),
-    date_to: Optional[datetime] = Query(None, alias="to", description="End date"),
+    date_from: Optional[date] = Query(None, alias="from", description="Start date (YYYY-MM-DD)"),
+    date_to: Optional[date] = Query(None, alias="to", description="End date (YYYY-MM-DD)"),
     device_type: Optional[DeviceType] = Query(None, description="Filter by device type"),
     limit: int = Query(100, ge=1, le=1000, description="Max results"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),

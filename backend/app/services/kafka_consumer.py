@@ -13,6 +13,7 @@ from aiokafka.errors import KafkaError
 from app.config import settings
 from app.models.event import Event, EventBatch
 from app.services.event_processor import event_processor
+from app.metrics.prometheus import record_event_processed, record_kafka_consumed
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,12 @@ class KafkaConsumerService:
         try:
             batch = EventBatch(events=events)
             response = await event_processor.process_batch(batch, source="kafka")
+
+            # Record metrics
+            record_kafka_consumed(settings.kafka_topic, len(events))
+            for event in events:
+                record_event_processed("kafka", event.type.value if hasattr(event.type, 'value') else str(event.type))
+
             logger.info(
                 f"Processed Kafka batch: {response.processed} events, "
                 f"{len(response.errors)} errors"

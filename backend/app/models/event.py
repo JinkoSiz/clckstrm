@@ -4,7 +4,7 @@ Event models for Clickstream Analytics.
 Defines Pydantic models for event validation and serialization.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -246,8 +246,8 @@ class EventFilter(BaseModel):
     session_id: Optional[str] = Field(None, description="Filter by session ID")
     type: Optional[EventType] = Field(None, description="Filter by event type")
     url: Optional[str] = Field(None, description="Filter by URL (partial match)")
-    date_from: Optional[datetime] = Field(None, description="Start date filter")
-    date_to: Optional[datetime] = Field(None, description="End date filter")
+    date_from: Optional[date] = Field(None, description="Start date filter (YYYY-MM-DD)")
+    date_to: Optional[date] = Field(None, description="End date filter (YYYY-MM-DD)")
     device_type: Optional[DeviceType] = Field(None, description="Filter by device type")
     limit: int = Field(100, ge=1, le=1000, description="Max results to return")
     offset: int = Field(0, ge=0, description="Offset for pagination")

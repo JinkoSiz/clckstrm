@@ -121,3 +121,8 @@ def record_http_duration(method: str, endpoint: str, duration: float):
 def record_db_query_duration(database: str, operation: str, duration: float):
     """Record database query duration metric."""
     DB_QUERY_DURATION.labels(database=database, operation=operation).observe(duration)
+
+
+def record_kafka_consumed(topic: str, count: int = 1):
+    """Record Kafka messages consumed metric."""
+    KAFKA_MESSAGES_CONSUMED.labels(topic=topic).inc(count)

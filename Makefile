@@ -91,16 +91,16 @@ stop-generator: ## Остановить генератор событий
 # Отказоустойчивость (демонстрация)
 # =============================================================================
 
-test-fault-tolerance: ## Запустить полные тесты отказоустойчивости (~5 мин)
-	@echo "Запуск полных тестов отказоустойчивости..."
-	bash tests/test_fault_tolerance.sh
+test-fault-tolerance: ## Запустить тест отказоустойчивости (PowerShell)
+	@echo "Запуск тестов отказоустойчивости..."
+	powershell -ExecutionPolicy Bypass -File tests/test_fault_tolerance.ps1
 
-test-fault-tolerance-quick: ## Быстрый тест отказоустойчивости (~2 мин)
+test-fault-tolerance-quick: ## Быстрый тест отказоустойчивости (PowerShell)
 	@echo "Запуск быстрых тестов отказоустойчивости..."
-	bash tests/test_fault_tolerance_quick.sh
+	powershell -ExecutionPolicy Bypass -File tests/test_fault_tolerance.ps1
 
-demo-fault-tolerance: ## Интерактивная демонстрация отказоустойчивости (для защиты)
-	bash tests/demo_fault_tolerance.sh
+demo-fault-tolerance: ## Интерактивная демонстрация отказоустойчивости
+	powershell -ExecutionPolicy Bypass -File tests/test_fault_tolerance.ps1
 
 stop-kafka-2: ## Остановить Kafka брокер 2 (демо отказоустойчивости)
 	$(COMPOSE) stop kafka-2
