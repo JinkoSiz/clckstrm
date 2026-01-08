@@ -1,0 +1,92 @@
+@startuml usecase
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Clickstream Analytics - Use Case Diagram
+
+left to right direction
+
+actor "Web User" as webuser
+actor "Analyst" as analyst
+actor "Admin" as admin
+actor "Developer" as dev
+
+rectangle "Clickstream Analytics System" {
+
+    package "Event Collection" {
+        usecase "Track page views" as UC1
+        usecase "Track clicks" as UC2
+        usecase "Send events to API" as UC3
+        usecase "Import CSV data" as UC4
+        usecase "Stream via Kafka" as UC5
+    }
+
+    package "Analytics" {
+        usecase "View DAU/WAU/MAU" as UC6
+        usecase "View page statistics" as UC7
+        usecase "View device distribution" as UC8
+        usecase "View conversion rates" as UC9
+        usecase "Export reports" as UC10
+        usecase "Create custom charts" as UC11
+    }
+
+    package "Monitoring" {
+        usecase "Monitor RPS/Latency" as UC12
+        usecase "View error rates" as UC13
+        usecase "Check system health" as UC14
+        usecase "View Kafka lag" as UC15
+    }
+
+    package "Administration" {
+        usecase "Manage ETL pipelines" as UC16
+        usecase "Configure dashboards" as UC17
+        usecase "Manage users" as UC18
+        usecase "Scale infrastructure" as UC19
+    }
+
+    package "Development" {
+        usecase "Integrate JS Tracker" as UC20
+        usecase "Use REST API" as UC21
+        usecase "Test endpoints" as UC22
+    }
+}
+
+' Web User connections
+webuser --> UC1
+webuser --> UC2
+
+' JS Tracker internal
+UC1 --> UC3
+UC2 --> UC3
+
+' Analyst connections
+analyst --> UC6
+analyst --> UC7
+analyst --> UC8
+analyst --> UC9
+analyst --> UC10
+analyst --> UC11
+
+' Admin connections
+admin --> UC12
+admin --> UC13
+admin --> UC14
+admin --> UC15
+admin --> UC16
+admin --> UC17
+admin --> UC18
+admin --> UC19
+
+' Developer connections
+dev --> UC4
+dev --> UC5
+dev --> UC20
+dev --> UC21
+dev --> UC22
+
+' Dependencies
+UC6 ..> UC3 : <<include>>
+UC7 ..> UC3 : <<include>>
+UC16 ..> UC3 : <<include>>
+
+@enduml

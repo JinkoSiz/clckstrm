@@ -1,0 +1,100 @@
+@startuml activity
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Clickstream Event Processing - Activity Diagram
+
+start
+
+partition "Event Reception" {
+    :Receive HTTP request\nPOST /api/v1/events;
+
+    if (Valid JSON?) then (yes)
+        :Parse request body;
+    else (no)
+        :Return 400 Bad Request;
+        stop
+    endif
+
+    if (Valid event schema?) then (yes)
+        :Extract events array;
+    else (no)
+        :Return 422 Validation Error;
+        stop
+    endif
+}
+
+partition "Event Processing" {
+    :Initialize batch result;
+
+    while (More events?) is (yes)
+        :Get next event;
+
+        fork
+            :Parse User-Agent;
+            note right
+                Extract:
+                - Browser
+                - OS
+                - Device type
+            end note
+        fork again
+            :Validate event type;
+            note right
+                Allowed:
+                - view
+                - click
+            end note
+        fork again
+            :Enrich with timestamp;
+            note right
+                - received_at
+                - source = 'http'
+            end note
+        end fork
+
+        if (Event valid?) then (yes)
+            :Add to batch;
+        else (no)
+            :Add to errors list;
+        endif
+    endwhile (no)
+}
+
+partition "Data Storage" {
+    if (Batch not empty?) then (yes)
+        :Generate event IDs;
+
+        fork
+            :Insert into ClickHouse\nevents_raw table;
+        fork again
+            :Update PostgreSQL\nuser/page references;
+        end fork
+
+        if (Insert successful?) then (yes)
+            :Update processed count;
+        else (no)
+            :Add batch error;
+            :Log error details;
+        endif
+    else (no)
+        :Skip storage;
+    endif
+}
+
+partition "Response" {
+    :Build response object;
+    note right
+        {
+          "status": "ok/partial/error",
+          "processed": N,
+          "errors": [...]
+        }
+    end note
+
+    :Return 200 OK;
+}
+
+stop
+
+@enduml
