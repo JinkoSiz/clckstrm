@@ -269,6 +269,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      kafka-3:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
