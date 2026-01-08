@@ -9,7 +9,6 @@
             <profile>default</profile>
             <quota>default</quota>
             <access_management>0</access_management>
-            <default_database>clickstream</default_database>
         </clickstream>
         <default>
             <password></password>
