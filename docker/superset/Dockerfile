@@ -3,7 +3,10 @@ FROM apache/superset:3.1.0
 
 USER root
 
-# Install ClickHouse driver (clickhouse-connect is SQLAlchemy 1.x compatible)
-RUN pip install --no-cache-dir clickhouse-connect==0.6.8
+# Install ClickHouse driver and requests for init script
+RUN pip install --no-cache-dir clickhouse-connect==0.6.8 requests
+
+# Copy init script
+COPY --chown=superset:superset init_superset.py /app/init_superset.py
 
 USER superset

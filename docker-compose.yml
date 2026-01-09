@@ -190,6 +190,26 @@ services:
     networks:
       - clickstream-net
 
+  # ClickHouse initialization (runs once to create database and tables)
+  clickhouse-init:
+    image: clickhouse/clickhouse-server:24.1
+    container_name: clickhouse-init
+    depends_on:
+      clickhouse-1:
+        condition: service_healthy
+    volumes:
+      - ./migrations/clickhouse:/migrations
+    entrypoint: >
+      bash -c "
+        echo 'Waiting for ClickHouse...' &&
+        sleep 5 &&
+        clickhouse-client --host clickhouse-1 --user clickstream --password clickstream123 --query 'CREATE DATABASE IF NOT EXISTS clickstream' &&
+        clickhouse-client --host clickhouse-1 --user clickstream --password clickstream123 --database clickstream --multiquery < /migrations/001_init.sql &&
+        echo 'ClickHouse initialized successfully'
+      "
+    networks:
+      - clickstream-net
+
   # =============================================================================
   # POSTGRESQL (справочники)
   # =============================================================================
@@ -502,6 +522,8 @@ services:
     depends_on:
       superset-db:
         condition: service_healthy
+      clickhouse-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 30s
@@ -512,7 +534,10 @@ services:
         superset db upgrade &&
         superset fab create-admin --username admin --firstname Admin --lastname User --email admin@example.com --password admin || true &&
         superset init &&
-        superset run -h 0.0.0.0 -p 8088 --with-threads --reload
+        superset run -h 0.0.0.0 -p 8088 --with-threads --reload &
+        sleep 60 &&
+        python /app/init_superset.py &&
+        wait
       "
     networks:
       - clickstream-net
