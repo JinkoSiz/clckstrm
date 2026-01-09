@@ -285,8 +285,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      clickhouse-1:
-        condition: service_healthy
+      clickhouse-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka-3:
@@ -506,6 +506,7 @@ services:
       - clickstream-net
 
   superset:
+    restart: unless-stopped
     build:
       context: ./docker/superset
       dockerfile: Dockerfile
