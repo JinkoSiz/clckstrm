@@ -274,8 +274,22 @@ class SupersetAPI:
             return None
 
         dash_id = response.json().get("id")
-        logger.info(f"Created dashboard '{title}' with id={dash_id} and {len(chart_ids)} charts")
+        logger.info(f"Created dashboard '{title}' with id={dash_id}")
 
+        # Add slices to dashboard via SQL (Superset API doesn't have direct endpoint)
+        import subprocess
+        for chart_id in chart_ids:
+            try:
+                cmd = f"PGPASSWORD=superset psql -h superset-db -U superset -d superset -c \"INSERT INTO dashboard_slices (dashboard_id, slice_id) VALUES ({dash_id}, {chart_id}) ON CONFLICT DO NOTHING;\""
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                if result.returncode == 0:
+                    logger.info(f"Added chart {chart_id} to dashboard")
+                else:
+                    logger.warning(f"Could not add chart {chart_id}: {result.stderr}")
+            except Exception as e:
+                logger.warning(f"Failed to add chart {chart_id}: {e}")
+
+        logger.info(f"Created dashboard '{title}' with {len(chart_ids)} charts")
         return dash_id
 
 
