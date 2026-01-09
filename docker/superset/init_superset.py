@@ -192,7 +192,7 @@ class SupersetAPI:
         return False
 
     def create_dashboard(self, title, slug, chart_ids, force_recreate=False):
-        """Create dashboard with charts using simple approach."""
+        """Create dashboard with charts."""
         # Check if exists
         response = self._request("GET", "/api/v1/dashboard/")
         if response.status_code == 200:
@@ -205,11 +205,67 @@ class SupersetAPI:
                         logger.info(f"Dashboard '{title}' already exists with id={dash['id']}")
                         return dash["id"]
 
-        # Create simple dashboard first (without complex layout)
+        # Build position_json with grid layout for charts
+        position_json = {
+            "DASHBOARD_VERSION_KEY": "v2",
+            "ROOT_ID": {"type": "ROOT", "id": "ROOT_ID", "children": ["GRID_ID"]},
+            "GRID_ID": {"type": "GRID", "id": "GRID_ID", "children": [], "parents": ["ROOT_ID"]},
+            "HEADER_ID": {"type": "HEADER", "id": "HEADER_ID", "meta": {"text": title}}
+        }
+
+        # Add each chart to the grid (2 columns layout)
+        row_id = 0
+        for i, chart_id in enumerate(chart_ids):
+            row_key = f"ROW-{row_id}"
+            chart_key = f"CHART-{chart_id}"
+
+            # Create row if needed (every 2 charts)
+            if i % 2 == 0:
+                position_json[row_key] = {
+                    "type": "ROW",
+                    "id": row_key,
+                    "children": [],
+                    "parents": ["ROOT_ID", "GRID_ID"],
+                    "meta": {"background": "BACKGROUND_TRANSPARENT"}
+                }
+                position_json["GRID_ID"]["children"].append(row_key)
+
+            # Add chart to current row
+            position_json[chart_key] = {
+                "type": "CHART",
+                "id": chart_key,
+                "children": [],
+                "parents": ["ROOT_ID", "GRID_ID", row_key],
+                "meta": {
+                    "width": 6,
+                    "height": 50,
+                    "chartId": chart_id,
+                    "sliceName": f"Chart {chart_id}"
+                }
+            }
+            position_json[row_key]["children"].append(chart_key)
+
+            # Move to next row after 2 charts
+            if i % 2 == 1:
+                row_id += 1
+
+        # Handle odd number of charts
+        if len(chart_ids) % 2 == 1:
+            row_id += 1
+
+        # Create dashboard with position_json
         data = {
             "dashboard_title": title,
             "slug": slug,
-            "published": True
+            "published": True,
+            "position_json": json.dumps(position_json),
+            "json_metadata": json.dumps({
+                "timed_refresh_immune_slices": [],
+                "expanded_slices": {},
+                "refresh_frequency": 0,
+                "default_filters": "{}",
+                "color_scheme": "supersetColors"
+            })
         }
 
         response = self._request("POST", "/api/v1/dashboard/", json=data)
@@ -218,36 +274,7 @@ class SupersetAPI:
             return None
 
         dash_id = response.json().get("id")
-        logger.info(f"Created dashboard '{title}' with id={dash_id}")
-
-        # Now add charts to dashboard via embedded charts endpoint
-        # Get chart details and build slices list
-        slices = []
-        for chart_id in chart_ids:
-            resp = self._request("GET", f"/api/v1/chart/{chart_id}")
-            if resp.status_code == 200:
-                chart_data = resp.json().get("result", {})
-                slices.append(chart_id)
-
-        if slices:
-            # Update dashboard with charts
-            # Use the slices relationship to add charts
-            update_data = {
-                "json_metadata": json.dumps({
-                    "timed_refresh_immune_slices": [],
-                    "expanded_slices": {},
-                    "refresh_frequency": 0,
-                    "default_filters": "{}",
-                    "color_scheme": "supersetColors"
-                })
-            }
-
-            resp = self._request("PUT", f"/api/v1/dashboard/{dash_id}", json=update_data)
-            if resp.status_code in [200, 201]:
-                logger.info(f"Updated dashboard metadata")
-
-        logger.info(f"Dashboard created. Add charts manually via UI: Edit Dashboard -> + button")
-        logger.info(f"Or view individual charts at: http://localhost:8088/superset/explore/?slice_id=<chart_id>")
+        logger.info(f"Created dashboard '{title}' with id={dash_id} and {len(chart_ids)} charts")
 
         return dash_id
 
