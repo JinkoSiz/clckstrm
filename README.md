@@ -95,3 +95,7 @@ docker-compose exec backend pytest -v --cov=app --cov-report=term-missing # 45 p
 
 - UML-диаграммы: `docs/diagrams/`
 - DBML-схема: `docs/dbml/schema.dbml`
+
+<img width="3364" height="1189" alt="изображение" src="https://github.com/user-attachments/assets/0f066437-2671-40d4-a713-09634d84f1e0" />
+
+<img width="3387" height="777" alt="изображение" src="https://github.com/user-attachments/assets/df2c863e-8078-4532-8189-890abef8a368" />
