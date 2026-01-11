@@ -1,0 +1,88 @@
+@startuml architecture
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title Clickstream Analytics - System Architecture
+
+package "Data Sources" {
+    [JS Tracker] as tracker
+    [HTTP API Client] as http_client
+    [CSV Files] as csv
+    [Kafka Producer] as kafka_prod
+}
+
+package "Backend Service" {
+    [FastAPI Application] as api
+    [Event Processor] as processor
+    [Kafka Consumer] as kafka_cons
+    [CSV Importer] as csv_import
+}
+
+package "Message Broker" {
+    node "Kafka Cluster" {
+        [Broker 1] as kb1
+        [Broker 2] as kb2
+        [Broker 3] as kb3
+    }
+    [ZooKeeper] as zk
+}
+
+package "Data Storage" {
+    database "PostgreSQL" as pg {
+        [users]
+        [pages]
+        [sessions]
+    }
+
+    database "ClickHouse Cluster" as ch {
+        [Replica 1] as ch1
+        [Replica 2] as ch2
+    }
+}
+
+package "ETL" {
+    [Apache Airflow] as airflow
+    [DAG: clickstream_etl] as dag
+}
+
+package "Monitoring & Analytics" {
+    [Prometheus] as prom
+    [Grafana] as graf
+    [Apache Superset] as superset
+}
+
+' Data flow
+tracker --> api : POST /events
+http_client --> api : REST API
+csv --> csv_import
+kafka_prod --> kb1
+
+api --> processor
+processor --> ch1
+processor --> kb1
+
+kafka_cons --> kb1
+kafka_cons --> processor
+
+kb1 <--> kb2 : replication
+kb2 <--> kb3 : replication
+kb1 --> zk : coordination
+kb2 --> zk
+kb3 --> zk
+
+ch1 <--> ch2 : replication
+ch1 --> zk : coordination
+
+airflow --> dag
+dag --> ch1 : ETL queries
+
+api --> pg : справочники
+processor --> pg
+
+prom --> api : /metrics
+prom --> ch1 : metrics
+graf --> prom : queries
+superset --> ch1 : analytics
+
+@enduml

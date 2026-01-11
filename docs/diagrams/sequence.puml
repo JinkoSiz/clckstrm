@@ -1,0 +1,115 @@
+@startuml sequence
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title Clickstream Event Processing - Sequence Diagram
+
+actor User
+participant "JS Tracker" as Tracker
+participant "FastAPI\nBackend" as API
+participant "Event\nProcessor" as Processor
+participant "Kafka" as Kafka
+participant "ClickHouse" as CH
+participant "PostgreSQL" as PG
+
+== Event Collection via HTTP ==
+
+User -> Tracker: click/view action
+activate Tracker
+
+Tracker -> Tracker: collect event data\n(url, session, device)
+Tracker -> API: POST /api/v1/events
+activate API
+
+API -> API: validate request\n(Pydantic)
+API -> Processor: process_batch(events)
+activate Processor
+
+Processor -> Processor: enrich event\n(parse User-Agent)
+Processor -> PG: get/create user
+activate PG
+PG --> Processor: user_id
+deactivate PG
+
+Processor -> CH: INSERT INTO events_raw
+activate CH
+CH --> Processor: ok
+deactivate CH
+
+Processor --> API: BatchResult
+deactivate Processor
+
+API --> Tracker: 200 OK\n{"processed": 1}
+deactivate API
+
+Tracker --> User: event tracked
+deactivate Tracker
+
+== Event Collection via Kafka ==
+
+participant "Generator" as Gen
+
+Gen -> Kafka: produce event
+activate Kafka
+
+participant "Kafka\nConsumer" as KConsumer
+
+Kafka -> KConsumer: consume message
+activate KConsumer
+
+KConsumer -> Processor: process_event
+activate Processor
+
+Processor -> CH: INSERT INTO events_raw
+activate CH
+CH --> Processor: ok
+deactivate CH
+
+Processor --> KConsumer: ok
+deactivate Processor
+
+KConsumer -> Kafka: commit offset
+deactivate KConsumer
+deactivate Kafka
+
+== ETL Processing ==
+
+participant "Airflow" as AF
+
+AF -> AF: trigger DAG\n(scheduled)
+activate AF
+
+AF -> CH: clean_and_validate\n(remove duplicates)
+activate CH
+CH --> AF: ok
+deactivate CH
+
+AF -> CH: enrich_events\n(geo, browser parsing)
+activate CH
+CH --> AF: ok
+deactivate CH
+
+AF -> CH: build_daily_stats\n(aggregation)
+activate CH
+CH --> AF: ok
+deactivate CH
+
+AF -> AF: DAG complete
+deactivate AF
+
+== Analytics Query ==
+
+actor Analyst
+
+Analyst -> API: GET /api/v1/stats/overview
+activate API
+
+API -> CH: SELECT stats
+activate CH
+CH --> API: stats data
+deactivate CH
+
+API --> Analyst: JSON response
+deactivate API
+
+@enduml

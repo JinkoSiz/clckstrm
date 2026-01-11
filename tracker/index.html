@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Shop - Clickstream Tracker Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo" id="logo">Demo Shop</a>
+                <nav class="nav">
+                    <a href="/catalog" class="nav-link" data-track="nav_catalog">Каталог</a>
+                    <a href="/about" class="nav-link" data-track="nav_about">О нас</a>
+                    <a href="/contacts" class="nav-link" data-track="nav_contacts">Контакты</a>
+                </nav>
+                <div class="header-actions">
+                    <button class="btn btn-icon" id="search-btn" data-track="search_open">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </button>
+                    <button class="btn btn-icon" id="cart-btn" data-track="cart_open">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"></circle>
+                            <circle cx="20" cy="21" r="1"></circle>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                        </svg>
+                        <span class="badge">3</span>
+                    </button>
+                    <button class="btn btn-primary" id="login-btn" data-track="login_click">Войти</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Добро пожаловать в Demo Shop</h1>
+                <p>Демонстрационный сайт для тестирования Clickstream-аналитики</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-lg" id="hero-cta" data-track="hero_cta">
+                        Начать покупки
+                    </button>
+                    <button class="btn btn-secondary btn-lg" id="hero-learn" data-track="hero_learn">
+                        Узнать больше
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="categories">
+        <div class="container">
+            <h2>Категории товаров</h2>
+            <div class="categories-grid">
+                <a href="/catalog/electronics" class="category-card" data-track="category_electronics">
+                    <div class="category-icon">📱</div>
+                    <h3>Электроника</h3>
+                    <p>1,250 товаров</p>
+                </a>
+                <a href="/catalog/clothing" class="category-card" data-track="category_clothing">
+                    <div class="category-icon">👕</div>
+                    <h3>Одежда</h3>
+                    <p>3,400 товаров</p>
+                </a>
+                <a href="/catalog/books" class="category-card" data-track="category_books">
+                    <div class="category-icon">📚</div>
+                    <h3>Книги</h3>
+                    <p>8,900 товаров</p>
+                </a>
+                <a href="/catalog/sports" class="category-card" data-track="category_sports">
+                    <div class="category-icon">⚽</div>
+                    <h3>Спорт</h3>
+                    <p>2,100 товаров</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products">
+        <div class="container">
+            <h2>Популярные товары</h2>
+            <div class="products-grid">
+                <div class="product-card" data-track="product_view_1">
+                    <div class="product-image">
+                        <div class="product-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="5" y="2" width="14" height="20" rx="2"/>
+                                <circle cx="12" cy="18" r="1"/>
+                            </svg>
+                            <span>iPhone 15 Pro</span>
+                        </div>
+                        <button class="btn-favorite" id="fav-1" data-track="favorite_1">❤️</button>
+                    </div>
+                    <div class="product-info">
+                        <h3>iPhone 15 Pro</h3>
+                        <p class="product-price">129 990 ₽</p>
+                        <button class="btn btn-primary" id="add-cart-1" data-track="add_to_cart_1">
+                            В корзину
+                        </button>
+                    </div>
+                </div>
+
+                <div class="product-card" data-track="product_view_2">
+                    <div class="product-image">
+                        <div class="product-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="2" y="4" width="20" height="14" rx="2"/>
+                                <path d="M6 21h12"/>
+                                <path d="M12 18v3"/>
+                            </svg>
+                            <span>MacBook Pro</span>
+                        </div>
+                        <button class="btn-favorite" id="fav-2" data-track="favorite_2">❤️</button>
+                    </div>
+                    <div class="product-info">
+                        <h3>MacBook Pro 16"</h3>
+                        <p class="product-price">249 990 ₽</p>
+                        <button class="btn btn-primary" id="add-cart-2" data-track="add_to_cart_2">
+                            В корзину
+                        </button>
+                    </div>
+                </div>
+
+                <div class="product-card" data-track="product_view_3">
+                    <div class="product-image">
+                        <div class="product-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M12 2C8 2 6 5 6 8v4c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V8c0-3-2-6-6-6z"/>
+                                <path d="M8 14v4a4 4 0 0 0 8 0v-4"/>
+                            </svg>
+                            <span>AirPods Pro</span>
+                        </div>
+                        <button class="btn-favorite" id="fav-3" data-track="favorite_3">❤️</button>
+                    </div>
+                    <div class="product-info">
+                        <h3>AirPods Pro 2</h3>
+                        <p class="product-price">24 990 ₽</p>
+                        <button class="btn btn-primary" id="add-cart-3" data-track="add_to_cart_3">
+                            В корзину
+                        </button>
+                    </div>
+                </div>
+
+                <div class="product-card" data-track="product_view_4">
+                    <div class="product-image">
+                        <div class="product-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="9"/>
+                                <circle cx="12" cy="12" r="6"/>
+                                <path d="M12 6v.5"/>
+                                <path d="M12 17.5v.5"/>
+                            </svg>
+                            <span>Apple Watch</span>
+                        </div>
+                        <button class="btn-favorite" id="fav-4" data-track="favorite_4">❤️</button>
+                    </div>
+                    <div class="product-info">
+                        <h3>Apple Watch Series 9</h3>
+                        <p class="product-price">44 990 ₽</p>
+                        <button class="btn btn-primary" id="add-cart-4" data-track="add_to_cart_4">
+                            В корзину
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="products-actions">
+                <button class="btn btn-secondary btn-lg" id="load-more" data-track="load_more">
+                    Показать ещё
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Banner Section -->
+    <section class="banner" id="promo-banner" data-track="banner_view">
+        <div class="container">
+            <div class="banner-content">
+                <h2>Скидка 20% на первый заказ!</h2>
+                <p>Используйте промокод: DEMO2024</p>
+                <button class="btn btn-primary btn-lg" id="banner-cta" data-track="banner_cta">
+                    Получить скидку
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter Section -->
+    <section class="newsletter">
+        <div class="container">
+            <h2>Подпишитесь на новости</h2>
+            <p>Получайте информацию о новинках и акциях</p>
+            <form class="newsletter-form" id="newsletter-form">
+                <input type="email" placeholder="Ваш email" id="newsletter-email">
+                <button type="submit" class="btn btn-primary" id="subscribe-btn" data-track="subscribe">
+                    Подписаться
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h4>О компании</h4>
+                    <ul>
+                        <li><a href="/about" data-track="footer_about">О нас</a></li>
+                        <li><a href="/careers" data-track="footer_careers">Карьера</a></li>
+                        <li><a href="/press" data-track="footer_press">Пресса</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Помощь</h4>
+                    <ul>
+                        <li><a href="/delivery" data-track="footer_delivery">Доставка</a></li>
+                        <li><a href="/returns" data-track="footer_returns">Возврат</a></li>
+                        <li><a href="/faq" data-track="footer_faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Контакты</h4>
+                    <ul>
+                        <li><a href="tel:+78001234567" data-track="footer_phone">8-800-123-45-67</a></li>
+                        <li><a href="mailto:info@demo.shop" data-track="footer_email">info@demo.shop</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Demo Shop. Демонстрационный проект для Clickstream-аналитики.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Tracker Status Panel -->
+    <div class="tracker-panel" id="tracker-panel">
+        <div class="tracker-header">
+            <h4>Clickstream Tracker</h4>
+            <span class="tracker-status" id="tracker-status">●</span>
+        </div>
+        <div class="tracker-stats">
+            <div class="stat">
+                <span class="stat-label">Views</span>
+                <span class="stat-value" id="view-count">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Clicks</span>
+                <span class="stat-value" id="click-count">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Session</span>
+                <span class="stat-value" id="session-id">-</span>
+            </div>
+        </div>
+        <div class="tracker-log" id="tracker-log"></div>
+    </div>
+
+    <!-- Load Tracker SDK -->
+    <script src="tracker.js"></script>
+    <script>
+        // Initialize tracker
+        ClickstreamTracker.init({
+            endpoint: 'http://localhost:8000/api/v1/events',
+            debug: true
+        });
+
+        // Update panel UI
+        document.getElementById('session-id').textContent =
+            ClickstreamTracker.getSessionId().substring(0, 8) + '...';
+    </script>
+</body>
+</html>

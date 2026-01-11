@@ -1,0 +1,8 @@
+# Kafka
+kafka-python==2.0.2
+
+# Data generation
+faker==22.0.0
+
+# Utilities
+python-dateutil==2.8.2

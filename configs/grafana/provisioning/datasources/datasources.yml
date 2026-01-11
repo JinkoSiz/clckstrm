@@ -1,0 +1,44 @@
+# Grafana datasources configuration
+
+apiVersion: 1
+
+datasources:
+  # Prometheus for application metrics
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+  # ClickHouse for analytics data
+  - name: ClickHouse
+    uid: clickhouse
+    type: grafana-clickhouse-datasource
+    access: proxy
+    url: http://clickhouse-1:8123
+    editable: false
+    jsonData:
+      defaultDatabase: clickstream
+      port: 8123
+      server: clickhouse-1
+      username: clickstream
+    secureJsonData:
+      password: clickstream123
+
+  # PostgreSQL for reference data
+  - name: PostgreSQL
+    uid: postgresql
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: clickstream
+    user: clickstream
+    editable: false
+    secureJsonData:
+      password: clickstream123
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 10
+      maxIdleConns: 10

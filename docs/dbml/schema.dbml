@@ -1,0 +1,272 @@
+// Clickstream Analytics Database Schema
+// DBML documentation: https://dbml.dbdiagram.io/docs
+
+Project clickstream_analytics {
+  database_type: 'PostgreSQL + ClickHouse'
+  Note: '''
+    # Clickstream Analytics
+
+    Схема базы данных для системы сбора и анализа кликстрим-событий.
+
+    ## Databases
+    - **PostgreSQL**: OLTP хранилище для справочников
+    - **ClickHouse**: OLAP хранилище для событий и аналитики
+  '''
+}
+
+// ============================================
+// PostgreSQL Tables (OLTP)
+// ============================================
+
+Table users {
+  id bigserial [pk, increment, note: 'Primary key']
+  external_id varchar(64) [unique, not null, note: 'External user identifier']
+  fio varchar(255) [note: 'Full name']
+  email varchar(255) [note: 'Email address']
+  country char(2) [note: 'ISO 3166-1 alpha-2 country code']
+  created_at timestamp [default: `now()`, note: 'Registration timestamp']
+
+  indexes {
+    external_id [unique]
+    country
+  }
+
+  Note: 'User reference data'
+}
+
+Table pages {
+  id bigserial [pk, increment]
+  url varchar(2048) [unique, not null, note: 'Page URL']
+  title varchar(255) [note: 'Page title']
+  category varchar(100) [note: 'Page category']
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    url [unique]
+    category
+  }
+
+  Note: 'Page reference data'
+}
+
+Table sessions {
+  id bigserial [pk, increment]
+  session_id varchar(64) [unique, not null, note: 'Session identifier']
+  user_id bigint [note: 'Reference to user']
+  started_at timestamp [note: 'Session start time']
+  ended_at timestamp [note: 'Session end time']
+  device_type varchar(20) [note: 'desktop/mobile/tablet']
+  browser varchar(50) [note: 'Browser name']
+  os varchar(50) [note: 'Operating system']
+  country char(2) [note: 'ISO country code']
+
+  indexes {
+    session_id [unique]
+    user_id
+    started_at
+  }
+
+  Note: 'User session data'
+}
+
+// ============================================
+// ClickHouse Tables (OLAP)
+// ============================================
+
+Table events_raw {
+  id UInt64 [pk, note: 'Event ID (Snowflake)']
+  event_type String [not null, note: 'view or click']
+  created_at DateTime [not null, note: 'Event timestamp']
+  received_at DateTime [not null, note: 'Server receive timestamp']
+  session_id String [not null, note: 'Session identifier']
+  ip String [note: 'Client IP address']
+  user_id UInt64 [note: 'User ID (nullable)']
+  url String [not null, note: 'Page URL']
+  referrer String [note: 'Referrer URL']
+  device_type String [note: 'desktop/mobile/tablet']
+  user_agent String [note: 'Full User-Agent string']
+  payload String [note: 'JSON payload with extra data']
+  source String [not null, note: 'http/kafka/csv']
+
+  indexes {
+    (created_at, user_id, id) [name: 'primary']
+  }
+
+  Note: '''
+    Raw events table (ClickHouse)
+    Engine: ReplicatedMergeTree
+    Partition: toYYYYMM(created_at)
+    Order: (created_at, user_id, id)
+  '''
+}
+
+Table events_processed {
+  id UInt64 [pk]
+  event_type String [not null]
+  event_date Date [not null, note: 'Date for partitioning']
+  created_at DateTime [not null]
+  session_id String [not null]
+  user_id UInt64
+  url String [not null]
+  page_title String [note: 'Extracted page title']
+  referrer String
+  device_type String
+  country String [note: 'GeoIP country']
+  browser String [note: 'Parsed browser name']
+  os String [note: 'Parsed OS name']
+  element_id String [note: 'Clicked element ID']
+  x UInt32 [note: 'Click X coordinate']
+  y UInt32 [note: 'Click Y coordinate']
+
+  indexes {
+    (event_date, user_id, id) [name: 'primary']
+  }
+
+  Note: '''
+    Processed events (enriched)
+    Engine: ReplicatedMergeTree
+    Partition: toYYYYMM(event_date)
+    Order: (event_date, user_id, id)
+  '''
+}
+
+Table daily_stats {
+  date Date [pk, note: 'Statistics date']
+  total_events UInt64 [note: 'Total events count']
+  total_views UInt64 [note: 'View events count']
+  total_clicks UInt64 [note: 'Click events count']
+  unique_users UInt64 [note: 'Unique users (DAU)']
+  unique_sessions UInt64 [note: 'Unique sessions']
+  avg_session_duration Float64 [note: 'Average session duration (seconds)']
+  conversion_rate Float64 [note: 'clicks / views ratio']
+
+  Note: '''
+    Daily aggregated statistics
+    Engine: ReplicatedMergeTree
+    Order: date
+  '''
+}
+
+Table hourly_stats {
+  date Date [not null]
+  hour UInt8 [not null, note: '0-23']
+  total_events UInt64
+  total_views UInt64
+  total_clicks UInt64
+  unique_users UInt64
+
+  indexes {
+    (date, hour) [name: 'primary']
+  }
+
+  Note: '''
+    Hourly aggregated statistics
+    Engine: ReplicatedMergeTree
+    Order: (date, hour)
+  '''
+}
+
+Table page_stats {
+  date Date [not null]
+  url String [not null]
+  views UInt64
+  clicks UInt64
+  unique_users UInt64
+  avg_time_on_page Float64 [note: 'Average time on page (seconds)']
+  bounce_rate Float64 [note: 'Bounce rate (0-1)']
+  conversion_rate Float64 [note: 'clicks / views']
+
+  indexes {
+    (date, url) [name: 'primary']
+  }
+
+  Note: '''
+    Page-level statistics
+    Engine: ReplicatedMergeTree
+    Order: (date, url)
+  '''
+}
+
+Table device_stats {
+  date Date [not null]
+  device_type String [not null, note: 'desktop/mobile/tablet']
+  browser String [not null]
+  os String [not null]
+  events UInt64
+  unique_users UInt64
+
+  indexes {
+    (date, device_type, browser, os) [name: 'primary']
+  }
+
+  Note: '''
+    Device distribution statistics
+    Engine: ReplicatedMergeTree
+    Order: (date, device_type, browser, os)
+  '''
+}
+
+Table element_stats {
+  date Date [not null]
+  url String [not null]
+  element_id String [not null]
+  clicks UInt64
+  unique_users UInt64
+  avg_x Float64 [note: 'Average X coordinate']
+  avg_y Float64 [note: 'Average Y coordinate']
+
+  indexes {
+    (date, url, element_id) [name: 'primary']
+  }
+
+  Note: '''
+    Element click statistics (for heatmaps)
+    Engine: ReplicatedMergeTree
+    Order: (date, url, element_id)
+  '''
+}
+
+Table user_activity {
+  date Date [pk]
+  dau UInt64 [note: 'Daily Active Users']
+  wau UInt64 [note: 'Weekly Active Users']
+  mau UInt64 [note: 'Monthly Active Users']
+  new_users UInt64 [note: 'New users today']
+  returning_users UInt64 [note: 'Returning users']
+
+  Note: '''
+    User activity metrics
+    Engine: ReplicatedMergeTree
+    Order: date
+  '''
+}
+
+Table session_stats {
+  date Date [not null]
+  session_id String [not null]
+  user_id UInt64
+  events_count UInt32
+  views_count UInt32
+  clicks_count UInt32
+  started_at DateTime
+  ended_at DateTime
+  duration_seconds UInt32
+  device_type String
+  country String
+
+  indexes {
+    (date, session_id) [name: 'primary']
+  }
+
+  Note: '''
+    Session-level statistics
+    Engine: ReplicatedMergeTree
+    Order: (date, session_id)
+  '''
+}
+
+// ============================================
+// References
+// ============================================
+
+Ref: sessions.user_id > users.id [delete: set null]
